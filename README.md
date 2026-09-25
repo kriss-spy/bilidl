@@ -1,178 +1,158 @@
-# Bilidown
+# bilidl
 
-[![GitHub Release](https://img.shields.io/github/v/release/iuroc/bilidown)](https://github.com/iuroc/bilidown/releases)
+`bilidl` is a command-line client for inspecting and downloading video and audio from Bilibili.
 
-哔哩哔哩视频解析下载工具，支持 8K 视频、Hi-Res 音频、杜比视界下载、批量解析，可扫码登录，常驻托盘。
+It supports individual videos, multipart videos, episodes, seasons, collections, and favorites. Downloads use Bilibili's DASH streams and FFmpeg stream copying, so media is remuxed without re-encoding.
 
-## Command-line client
+## Requirements
 
-Build the `bilidl` CLI from the server module:
+- Go 1.23 or newer when building from source
+- FFmpeg available in `PATH`, or configured with `bilidl config set ffmpeg.path <path>`
+- A Bilibili account; login is currently required for inspection and download commands
+
+## Build and install
+
+Clone the repository and build the CLI:
 
 ```shell
-cd server
+git clone https://github.com/kriss-spy/bilidl.git
+cd bilidl/server
 go build -o bilidl ./cmd/bilidl
 ```
 
-Authenticate once, then download a Bilibili URL or ID:
+Install it for the current user on Linux:
 
 ```shell
-./bilidl auth login
-./bilidl BV1LLDCYJEU3
-./bilidl download BV1LLDCYJEU3 --quality 1080p --codec hevc
+install -Dm755 bilidl "$HOME/.local/bin/bilidl"
 ```
 
-Useful discovery and setup commands:
+Ensure `$HOME/.local/bin` is included in `PATH`, then verify the installation:
 
 ```shell
-./bilidl info BV1LLDCYJEU3
-./bilidl formats BV1LLDCYJEU3
-./bilidl config list
-./bilidl doctor
-./bilidl --help
+bilidl version
+bilidl doctor
 ```
 
-Multi-item targets require an explicit selection when input is not interactive:
+## Quick start
+
+Authenticate by scanning a QR code:
 
 ```shell
-./bilidl download <url> --items 1,3-5
-./bilidl download <url> --all
+bilidl auth login
+bilidl auth status
 ```
 
-## 支持解析的链接类型
-
--   【单个视频】https://www.bilibili.com/video/BV1LLDCYJEU3/
--   【番剧和影视剧】https://www.bilibili.com/bangumi/play/ss48831
--   【视频合集】https://space.bilibili.com/282565107/channel/collectiondetail?sid=1427135
--   【收藏夹】https://space.bilibili.com/1176277996/favlist?fid=1234122612
--   【UP 主空间地址】等待 3.x 版本支持
-
-## 使用说明
-
-1. 从 [Releases](https://github.com/iuroc/bilidown/releases) 下载适合您系统版本的安装包
-2. 非 Windows 系统，请先安装 [FFmpeg 工具](https://www.ffmpeg.org/)
-3. 将安装包解压后执行即可
-
-## 第三方客户端
-
-感谢社区开发者对 Bilidown 的支持。
-
-- **bilidown-for-mac**（macOS 原生客户端）
-  - 项目地址：https://github.com/Qwehhh2233/bilidown-for-mac
-  - 基于 Bilidown 后端实现，由社区开发者维护，为 macOS 用户提供原生客户端体验
-
-## 软件特色
-
-1. 前端采用 [Bootstrap](https://github.com/twbs/bootstrap) 和 [VanJS](https://github.com/vanjs-org/van) 构建，轻量美观
-2. 后端使用 Go 语言开发，数据库采用 SQlite，简化构建和部署过程
-3. 前端通过 [p-queue](https://github.com/sindresorhus/p-queue) 控制并发请求，加快批量解析速度
-
-## 其他说明
-
--   本程序不支持也不建议 HTTP 代理，直接使用国内网络访问能提升批量解析的成功率和稳定性。
-
-## 打包可执行文件
+Inspect and download a video:
 
 ```shell
-git clone https://github.com/iuroc/bilidown
-cd bilidown/client
-pnpm install
-pnpm build
-cd ../server
-go mod tidy
-CGO_ENABLED=1 go build
+bilidl info BV1LLDCYJEU3
+bilidl formats BV1LLDCYJEU3
+bilidl BV1LLDCYJEU3
 ```
 
-## 交叉编译
+A URL or BVID passed directly to `bilidl` is shorthand for `bilidl download`.
 
-### 说明
+## Supported targets
 
--   镜像名称：`iuroc/cgo-cross-build`
--   支持的系统架构
-    -   `linux/amd64`
-    -   `windows/amd64`
-    -   `windows/386`
-    -   `windows/arm64`
-    -   `darwin/amd64`
-    -   `darwin/arm64`
+- Video or multipart-video URLs and BVIDs
+- Bangumi episode URLs containing `ep<ID>`
+- Season URLs containing `ss<ID>`
+- Collection URLs containing `sid=<ID>` and an uploader ID
+- Favorites URLs containing `fid=<ID>`
+- Short links from `b23.tv` and `bili2233.cn`
 
-### 拉取镜像和项目源码
+For a multipart video, `?p=N` selects that page directly:
 
 ```shell
-docker pull iuroc/cgo-cross-build:latest
-git clone https://github.com/iuroc/bilidown
+bilidl 'https://www.bilibili.com/video/BV1LLDCYJEU3?p=2'
 ```
 
-### 交叉编译发行版
+## Download options
 
-> 执行 `goreleaser` 命令时将自动执行 `pnpm build` 和 `go mod tidy`
-
-将 `ffmpeg.exe` 放入 `server/bin` 目录内。
-
-在项目根目录执行如下代码，进入 Docker 容器。
+Select video quality, codec, audio quality, output mode, and container:
 
 ```shell
-docker run --rm -it -v .:/usr/src/data iuroc/cgo-cross-build
+bilidl download BV1LLDCYJEU3 \
+  --quality 1080p \
+  --codec hevc \
+  --audio-quality best \
+  --mode merge \
+  --container auto
 ```
 
-在容器内的终端执行如下代码，开始交叉编译。
+Preview the resolved streams and output path without downloading:
+
+```shell
+bilidl download BV1LLDCYJEU3 --dry-run
+```
+
+For targets containing multiple items, select explicit item numbers or all items:
+
+```shell
+bilidl download '<season-or-collection-url>' --items 1,3-5
+bilidl download '<season-or-collection-url>' --all
+```
+
+Non-interactive sessions require `--items` or `--all` for multi-item targets.
+
+Downloads resume from partial files by default. Use `--no-resume` to restart, `--overwrite` to replace an existing output, and `--jobs N` to control item concurrency.
+
+## Configuration
+
+View the effective configuration and its location:
+
+```shell
+bilidl config list
+bilidl config path
+```
+
+Change or restore a setting:
+
+```shell
+bilidl config set download.directory "$HOME/Videos"
+bilidl config set download.quality 1080p
+bilidl config unset download.quality
+```
+
+Run `bilidl config --help` for the complete key list.
+
+## Machine-readable output
+
+Commands that return structured information support `--json`:
+
+```shell
+bilidl --json info BV1LLDCYJEU3
+bilidl --json formats BV1LLDCYJEU3
+bilidl --json auth status
+```
+
+Use `--quiet` to suppress non-error output and `--verbose` for diagnostics.
+
+## Shell completion
+
+Generate completion scripts for Bash, Zsh, Fish, or PowerShell:
+
+```shell
+bilidl completion bash
+bilidl completion zsh
+bilidl completion fish
+bilidl completion powershell
+```
+
+Consult your shell's documentation to load the generated script permanently.
+
+## Development
+
+The Go module and CLI entry point live under `server/`:
 
 ```shell
 cd server
-git tag v2.1.1
-goreleaser release --snapshot --clean
-# 正式发行
-# GITHUB_TOKEN=xxx goreleaser release --clean
+go test ./cmd/bilidl ./cli/...
+go test -race ./cmd/bilidl ./cli/...
+go vet ./cmd/bilidl ./cli/...
+go build -o bilidl ./cmd/bilidl
 ```
 
-### 编译指定系统架构
+## License
 
-```ini
-# 按上面的步骤进入 Docker 容器内终端
-
-# [darwin-amd64]
-GOOS=darwin
-GOARCH=amd64
-CC=o64-clang
-CGO_ENABLED=1
-go build
-```
-
-### 非 Docker 环境编译
-
-在 Linux amd64 平台上执行 `go build` 时，您可能需要安装以下依赖包：  
-
-```bash
-sudo apt install pkg-config gcc libayatana-appindicator3-dev
-```
-
-## 开发环境
-
-```bash
-# client
-pnpm install
-pnpm dev
-# server
-go build && ./bilidown
-```
-
-## 特别感谢
-
--   [twbs/bootstrap](https://github.com/twbs/bootstrap) - 前端开发必备的响应式框架，简化页面布局
--   [vanjs-org/van](https://github.com/vanjs-org/van) - 轻量级的前端框架，专注于构建高效应用
--   [vitejs/vite](https://github.com/vitejs/vite) - 快速的前端构建工具，基于 ES 模块开发
--   [SocialSisterYi/bilibili-API-collec](https://github.com/SocialSisterYi/bilibili-API-collect) - B 站 API 集合，支持多种操作接口
--   [sindresorhus/p-queue](https://github.com/sindresorhus/p-queue) - 支持并发限制的 JavaScript 队列处理库
--   [iuroc/vanjs-router](https://github.com/iuroc/vanjs-router) - 轻量级前端路由工具，适用于 Van.js 框架
--   [uuidjs/uuid](https://www.npmjs.com/package/uuid) - 用于生成唯一标识符（UUID）的 JavaScript 库
--   [getlantern/systray](https://github.com/getlantern/systray) - 简单的跨平台系统托盘图标库，支持图标管理
--   [modernc.org/sqlite](https://pkg.go.dev/modernc.org/sqlite) - Go 语言的 SQLite3 数据库驱动，轻量高效
--   [skip2/go-qrcode](https://github.com/skip2/go-qrcode) - 生成 QR 码的 Go 语言库，简单易用
-
-## 软件界面
-
-![](./docs/2024-11-05_090604.png)
-
-
-## Star History
-
-[![Star History Chart](https://api.star-history.com/svg?repos=iuroc/bilidown&type=Date)](https://www.star-history.com/#iuroc/bilidown&Date)
+See [LICENSE](LICENSE).
