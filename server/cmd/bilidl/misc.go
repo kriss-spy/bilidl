@@ -7,6 +7,7 @@ import (
 	"runtime"
 	"strings"
 
+	appconfig "bilidown/cli/config"
 	"bilidown/util"
 
 	"github.com/spf13/cobra"
@@ -31,11 +32,15 @@ func newDoctorCmd(global *globalOptions) *cobra.Command {
 			failed = true
 		} else {
 			checks = append(checks, check{"configuration", "ok", path})
-			if err := os.MkdirAll(settings.Download.Directory, 0o755); err != nil {
+			directory, directoryErr := appconfig.ExpandPath(settings.Download.Directory)
+			if directoryErr != nil {
+				checks = append(checks, check{"download directory", "failed", directoryErr.Error()})
+				failed = true
+			} else if err := os.MkdirAll(directory, 0o755); err != nil {
 				checks = append(checks, check{"download directory", "failed", err.Error()})
 				failed = true
 			} else {
-				checks = append(checks, check{"download directory", "ok", settings.Download.Directory})
+				checks = append(checks, check{"download directory", "ok", directory})
 			}
 		}
 		ffmpeg, err := util.GetFFmpegPath()

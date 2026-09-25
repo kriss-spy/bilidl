@@ -26,3 +26,18 @@ func TestLoadMergesFileOverDefaults(t *testing.T) {
 		t.Fatalf("defaults were not preserved: %#v", got.Download)
 	}
 }
+
+func TestExpandPathExpandsHomeDirectory(t *testing.T) {
+	home, err := os.UserHomeDir()
+	if err != nil {
+		t.Fatal(err)
+	}
+	got, err := config.ExpandPath("~/Downloads/bilidl")
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := filepath.Join(home, "Downloads", "bilidl")
+	if got != want {
+		t.Fatalf("ExpandPath() = %q, want %q", got, want)
+	}
+}

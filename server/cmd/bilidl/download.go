@@ -77,6 +77,10 @@ func runDownload(cmd *cobra.Command, global *globalOptions, options *downloadOpt
 		return err
 	}
 	applyDownloadDefaults(cmd, options, settings.Download)
+	options.output, err = appconfig.ExpandPath(options.output)
+	if err != nil {
+		return fmt.Errorf("expand output directory: %w", err)
+	}
 	if err := validateDownloadOptions(options); err != nil {
 		return err
 	}

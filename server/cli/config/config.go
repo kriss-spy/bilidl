@@ -5,7 +5,22 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
+	"strings"
 )
+
+func ExpandPath(value string) (string, error) {
+	if value != "~" && !strings.HasPrefix(value, "~/") {
+		return value, nil
+	}
+	home, err := os.UserHomeDir()
+	if err != nil {
+		return "", err
+	}
+	if value == "~" {
+		return home, nil
+	}
+	return filepath.Join(home, filepath.FromSlash(strings.TrimPrefix(value, "~/"))), nil
+}
 
 type Config struct {
 	Download Download `json:"download"`
